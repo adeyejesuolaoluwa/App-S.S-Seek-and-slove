@@ -1,0 +1,12 @@
+{
+  "name": "S.S. Seek & Solve",
+  "short_name": "S.S.",
+  "description": "Learn what you need and turn your ideas into digital products.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#e53935",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
