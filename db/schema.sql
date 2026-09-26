@@ -128,3 +128,32 @@ create table audit_logs (
   created_at timestamptz not null default now()
 );
 create index audit_logs_created_idx on audit_logs(created_at desc);
+
+-- Keep application data private by default. Tables without policies are not
+-- accessible to browser roles; privileged server credentials bypass RLS.
+alter table users enable row level security;
+alter table projects enable row level security;
+alter table lessons enable row level security;
+alter table learning_progress enable row level security;
+alter table products enable row level security;
+alter table orders enable row level security;
+alter table customization_requests enable row level security;
+alter table contact_submissions enable row level security;
+alter table notifications enable row level security;
+alter table audit_logs enable row level security;
+
+-- Anonymous visitors may submit contact messages, but cannot read or change
+-- submissions. Column-level grants preserve server-generated status/timestamps.
+revoke all on table contact_submissions from anon, authenticated;
+grant insert (name, email, message) on table contact_submissions to anon, authenticated;
+drop policy if exists contact_submissions_public_insert on contact_submissions;
+create policy contact_submissions_public_insert
+  on contact_submissions
+  for insert
+  to anon, authenticated
+  with check (
+    length(trim(name)) between 1 and 120
+    and length(trim(email)) between 3 and 320
+    and position('@' in email) > 1
+    and length(trim(message)) between 1 and 5000
+  );

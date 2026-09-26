@@ -17,16 +17,16 @@ Copy `.env.example` to `.env.local` and replace:
 VITE_CONTACT_EMAIL=your-real-business-email@example.com
 ```
 
-The contact form opens a prefilled email draft. WhatsApp is already configured for `+234 812 099 6497`.
+WhatsApp is already configured for `+234 812 099 6497`. The contact form saves a submission to Supabase when configured; otherwise it explains that saving is unavailable and directs the visitor to WhatsApp or email.
 
 For production delivery and database persistence, add a server endpoint or hosted form service. Do not put database passwords, SMTP passwords, payment secrets, or admin credentials in `VITE_` variables.
 
 ## Configure the database
 
-1. Create a private Supabase or PostgreSQL project.
-2. Run `db/schema.sql` in the provider SQL editor.
-3. Add the server-only `DATABASE_URL` to the deployment secret manager.
-4. Add authenticated server API routes for contact, projects, orders, notifications, and admin data.
+1. Create a private Supabase project.
+2. Run `db/schema.sql` in the Supabase SQL Editor. It enables RLS on application tables and grants only constrained insert access to contact messages for browser roles.
+3. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the deployment environment settings.
+4. Add the server-only `DATABASE_URL` to a backend/deployment secret manager when adding server API routes.
 5. Keep the database dashboard private. Do not publish its credentials or URL with write access.
 
 For the current browser client, add the Supabase project values to `.env.local`:
@@ -36,7 +36,7 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-public-anon-key
 ```
 
-The anon key is safe for browser use only when Row Level Security policies are enabled. Never place the Supabase service-role key in a `VITE_` variable.
+The anon key is safe for browser use only because the schema enables Row Level Security. Never place the Supabase service-role key in a `VITE_` variable. Projects, orders, user accounts, and admin operations still require authenticated server APIs before they can be used in production.
 
 ## Deploy
 

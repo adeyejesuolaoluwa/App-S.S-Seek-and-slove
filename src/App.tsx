@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { EmptyState } from './components/States'
+import { supabase } from './lib/supabase'
 
 type CreationPath = {
   icon: typeof Code2
@@ -112,6 +113,8 @@ function App() {
   const [notifications, setNotifications] = useState(['Your project brief is ready to review.', 'Lesson 2 is waiting in your learning path.'])
   const [openFaq, setOpenFaq] = useState(0)
   const [contactSent, setContactSent] = useState(false)
+  const [contactError, setContactError] = useState('')
+  const [contactSubmitting, setContactSubmitting] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState('Professional')
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [checkoutEmail, setCheckoutEmail] = useState('')
@@ -124,6 +127,38 @@ function App() {
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
     setMenuOpen(false)
+  }
+
+  const handleContactSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setContactError('')
+    setContactSubmitting(true)
+
+    const form = new FormData(event.currentTarget)
+    const message = {
+      name: String(form.get('name') ?? '').trim(),
+      email: String(form.get('email') ?? '').trim(),
+      message: String(form.get('message') ?? '').trim(),
+    }
+
+    if (!supabase) {
+      setContactError('Message saving is not connected yet. Use WhatsApp or email below, or configure Supabase to enable this form.')
+      setContactSubmitting(false)
+      return
+    }
+
+    try {
+      const { error } = await supabase.from('contact_submissions').insert(message)
+      if (error) {
+        setContactError('We could not save your message. Please try WhatsApp or email instead.')
+        return
+      }
+      setContactSent(true)
+    } catch {
+      setContactError('We could not save your message. Please try WhatsApp or email instead.')
+    } finally {
+      setContactSubmitting(false)
+    }
   }
 
   return (
@@ -153,7 +188,7 @@ function App() {
           {menuOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
       </header>
-      {notificationsOpen && <aside className="notification-panel" aria-label="Notifications"><div className="notification-header"><strong>Notifications</strong><button onClick={() => setNotifications([])}>Mark all read</button></div>{notifications.length > 0 ? notifications.map((notification) => <div className="notification-item" key={notification}><span className="notification-dot" /><span><strong>{notification}</strong><small>Just now</small></span></div>) : <div className="notification-empty"><Bell size={18} /><span>All caught up.</span></div>}</aside>}
+      {notificationsOpen && <aside className="notification-panel" aria-label="Notifications"><div className="notification-header"><strong>Notifications</strong><button onClick={() => setNotifications([])}>Mark all read</button></div>{notifications.length > 0 ? notifications.map((notification) => <div className="notification-item" key={notification}><span className="notification-dot" /><span><strong>{notification}</strong><small>Just now</small></span><button className="notification-dismiss" onClick={() => setNotifications((current) => current.filter((item) => item !== notification))} aria-label={`Remove notification: ${notification}`} title="Remove notification"><X size={14} /></button></div>) : <div className="notification-empty"><Bell size={18} /><span>All caught up.</span></div>}</aside>}
 
       <section className="hero" id="home">
         <div className="hero-copy">
@@ -215,7 +250,17 @@ function App() {
 
       <section className="user-workspace section" id="account"><div className="account-heading"><div><span className="section-label">YOUR PRIVATE WORKSPACE</span><h2>Keep the work<br /><span>moving forward.</span></h2></div><div className="account-status"><span className="tiny-avatar">A</span><span><strong>Alex Morgan</strong><small>Creator account</small></span></div></div><div className="workspace-tabs">{['Projects', 'Learning', 'Purchases', 'Saved work'].map((tab) => <button key={tab} className={workspaceTab === tab ? 'active' : ''} onClick={() => setWorkspaceTab(tab)}>{tab}</button>)}</div><div className="workspace-dashboard"><div className="dashboard-main"><span className="section-label">{workspaceTab.toUpperCase()}</span><h3>{workspaceTab === 'Projects' ? 'Your projects' : workspaceTab === 'Learning' ? 'Learning in progress' : workspaceTab === 'Purchases' ? 'Your digital products' : 'Saved for later'}</h3>{workspaceTab === 'Saved work' ? <EmptyState title="No saved work yet" message="Save an idea or lesson to find it here later." /> : <><div className="dashboard-item"><span className="dashboard-icon purple"><Layers3 size={18} /></span><span><strong>{projectName || 'Northstar Studio'}</strong><small>{workspaceTab === 'Learning' ? '2 of 6 lessons complete' : 'Project brief · Updated just now'}</small></span><span className="dashboard-progress">33%</span></div><div className="dashboard-item muted"><span className="dashboard-icon red"><Sparkles size={18} /></span><span><strong>Restaurant booking concept</strong><small>Draft · Continue exploring</small></span><ArrowRight size={16} /></div></>}</div><aside className="dashboard-side"><span className="section-label">AT A GLANCE</span><div><strong>01</strong><span>active project</span></div><div><strong>02</strong><span>lessons complete</span></div><button className="button button-dark" onClick={() => scrollTo('workspace')}>Open project <ArrowRight size={15} /></button></aside></div></section>
 
-      <section className="support-section section" id="faq"><div className="support-heading"><div><span className="section-label">HELP WHEN YOU NEED IT</span><h2>Good questions<br /><span>move things forward.</span></h2></div><p>Find a quick answer or send the team a note. We’ll help you find the next useful step.</p></div><div className="support-grid"><div className="faq-list">{[['What is S.S.?', 'S.S. is a digital creation partner that helps you learn, plan, and build online products.'], ['What can I create?', 'Websites, web applications, online stores, portfolios, business sites, and other digital products.'], ['How does the free trial work?', 'You can explore the core workspace for 2.5 days. Your account uses server time to keep the trial fair.'], ['Can I customize a purchased product?', 'Yes. Submit a customization request and you will see any additional cost before approval.']].map(([question, answer], index) => <div className={`faq-item ${openFaq === index ? 'open' : ''}`} key={question}><button onClick={() => setOpenFaq(openFaq === index ? -1 : index)}><strong>{question}</strong><ChevronDown size={16} /></button>{openFaq === index && <p>{answer}</p>}</div>)}</div><div className="contact-card" id="contact"><span className="section-label">CONTACT S.S. SEEK & SOLVE</span><a className="whatsapp-link" href={whatsappUrl} target="_blank" rel="noreferrer">Message us on WhatsApp <ArrowRight size={14} /></a>{contactEmail && <a className="email-link" href={`mailto:${contactEmail}`}>Email {contactEmail} <ArrowRight size={14} /></a>}{contactSent ? <div className="contact-success"><span className="success-mark"><Check size={18} /></span><h3>Message prepared.</h3><p>Your email app should open with the message ready to send.</p></div> : <form onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const subject = encodeURIComponent(`S.S. enquiry from ${form.get('name')}`); const body = encodeURIComponent(`Name: ${form.get('name')}\nEmail: ${form.get('email')}\n\n${form.get('message')}`); if (contactEmail) window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`; setContactSent(true) }}><h3>Tell us what you’re working on.</h3><label>Name<input name="name" required placeholder="Your name" /></label><label>Email<input name="email" required type="email" placeholder="you@example.com" /></label><label>Message<textarea name="message" required placeholder="How can we help?" /></label><button className="button button-primary" type="submit">{contactEmail ? 'Open email draft' : 'Save message preview'} <ArrowRight size={15} /></button></form>}</div></div></section>
+      <section className="support-section section" id="faq"><div className="support-heading"><div><span className="section-label">HELP WHEN YOU NEED IT</span><h2>Good questions<br /><span>move things forward.</span></h2></div><p>Find a quick answer or send the team a note. We’ll help you find the next useful step.</p></div><div className="support-grid"><div className="faq-list">{[['What is S.S.?', 'S.S. is a digital creation partner that helps you learn, plan, and build online products.'], ['What can I create?', 'Websites, web applications, online stores, portfolios, business sites, and other digital products.'], ['How does the free trial work?', 'You can explore the core workspace for 2.5 days. Your account uses server time to keep the trial fair.'], ['Can I customize a purchased product?', 'Yes. Submit a customization request and you will see any additional cost before approval.']].map(([question, answer], index) => <div className={`faq-item ${openFaq === index ? 'open' : ''}`} key={question}><button onClick={() => setOpenFaq(openFaq === index ? -1 : index)}><strong>{question}</strong><ChevronDown size={16} /></button>{openFaq === index && <p>{answer}</p>}</div>)}</div><div className="contact-card" id="contact"><span className="section-label">CONTACT S.S. SEEK & SOLVE</span><a className="whatsapp-link" href={whatsappUrl} target="_blank" rel="noreferrer">Message us on WhatsApp <ArrowRight size={14} /></a>{contactEmail && <a className="email-link" href={`mailto:${contactEmail}`}>Email {contactEmail} <ArrowRight size={14} /></a>}{contactSent ? <div className="contact-success"><span className="success-mark"><Check size={18} /></span><h3>Message prepared.</h3><p>Your email app should open with the message ready to send.</p></div> : <form onSubmit={handleContactSubmit}>
+
+        {contactError && <p className="contact-error" role="alert">{contactError}</p>}
+
+        <h3>Tell us what you’re working on.</h3>
+        <label>Name<input name="name" required placeholder="Your name" /></label>
+        <label>Email<input name="email" required type="email" placeholder="you@example.com" /></label>
+        <label>Message<textarea name="message" required placeholder="How can we help?" /></label>
+        <button className="button button-primary" type="submit">{contactSubmitting ? 'Sending...' : 'Send message'}</button>
+
+      </form>}</div></div></section>
 
       <section className="products-section section" id="products"><div className="products-heading"><div><span className="section-label">PROFESSIONALLY CREATED PRODUCTS</span><h2>Choose the right<br /><span>pace to build.</span></h2></div><p>Every plan starts with a clear brief and ends with a digital product shaped around your needs.</p></div><div className="plan-grid">{plans.map((plan) => <button className={`plan-card ${selectedPlan === plan.name ? 'active' : ''}`} key={plan.name} onClick={() => setSelectedPlan(plan.name)}><span className="plan-name">{plan.name}</span><strong>{plan.price}</strong><span className="plan-duration">{plan.duration}</span><p>{plan.description}</p><span className="plan-select">{selectedPlan === plan.name ? 'Selected' : 'Choose plan'} {selectedPlan === plan.name && <Check size={14} />}</span></button>)}</div><div className="checkout-bar"><span><Sparkles size={16} /> Selected: <strong>{selectedPlan}</strong> · Secure checkout via payment provider</span><button className="button button-primary" onClick={() => setCheckoutOpen(true)}>Continue to checkout <ArrowRight size={16} /></button></div></section>
 
